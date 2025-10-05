@@ -1,0 +1,27 @@
+{
+  "name": "kuditrace_ai_sre_platform",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/O-BERNARDOFOEGBU/KudiTrace_AI_SRE_Platform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/O-BERNARDOFOEGBU/KudiTrace_AI_SRE_Platform/issues"
+  },
+  "homepage": "https://github.com/O-BERNARDOFOEGBU/KudiTrace_AI_SRE_Platform#readme",
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
