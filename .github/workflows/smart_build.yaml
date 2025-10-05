@@ -9,7 +9,7 @@ on:
 jobs:
   evolve_project:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -22,72 +22,62 @@ jobs:
           git config user.name "O-BERNARDOFOEGBU"
           git config user.email "obinnaofoegbu71@gmail.com"
 
-      - name: Smart evolution script
+      - name: Initialize & evolve project
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          mkdir -p frontend backend/node backend/go backend/rust scripts docs
+          set -e
 
-          # --- FRONTEND (React + TypeScript) ---
-          FRONT_FILE="frontend/App.tsx"
-          if [ ! -f "$FRONT_FILE" ]; then
-            cat <<'EOF' > $FRONT_FILE
-import React from "react";
+          # create directories
+          mkdir -p frontend/src backend/node backend/go backend/rust scripts docs
 
-export default function App() {
-  return <div className="p-4 text-lg font-bold">KudiTrace Frontend — AI SRE Dashboard</div>;
-}
-EOF
-          else
-            echo "// Auto-update $(date -u)" >> $FRONT_FILE
-          fi
-
-          # --- NODE BACKEND ---
+          # Files
+          FRONT_FILE="frontend/src/App.tsx"
           NODE_FILE="backend/node/server.js"
-          if [ ! -f "$NODE_FILE" ]; then
-            cat <<'EOF' > $NODE_FILE
-const express = require("express");
-const app = express();
-app.get("/", (_, res) => res.send("KudiTrace Node.js API running"));
-app.listen(3000, () => console.log("Server started on port 3000"));
-EOF
-          else
-            echo "// heartbeat $(date -u)" >> $NODE_FILE
-          fi
-
-          # --- GO BACKEND ---
           GO_FILE="backend/go/main.go"
-          if [ ! -f "$GO_FILE" ]; then
-            cat <<'EOF' > $GO_FILE
-package main
-import "fmt"
-func main() {
-    fmt.Println("KudiTrace Go Microservice active")
-}
-EOF
-          else
-            echo "// minor log $(date -u)" >> $GO_FILE
-          fi
-
-          # --- RUST CORE ---
           RUST_FILE="backend/rust/main.rs"
-          if [ ! -f "$RUST_FILE" ]; then
-            cat <<'EOF' > $RUST_FILE
-fn main() {
-    println!("KudiTrace Rust Performance Monitor initialized");
-}
-EOF
-          else
-            echo "// auto-update $(date -u)" >> $RUST_FILE
+          TS_FILE="frontend/src/utils.ts"
+          JS_FILE="backend/node/utils.js"
+          DOC_FILE="docs/progress.md"
+
+          # --- Create scaffold files only on first run ---
+          if [ ! -f "$FRONT_FILE" ]; then
+            printf '%s\n' 'import React from "react";' '' 'export default function App() {' '  return <div className="p-4 text-lg font-bold">KudiTrace Frontend — AI SRE Dashboard</div>;' '}' > "$FRONT_FILE"
           fi
 
-          # --- DOCS ---
-          DOC_FILE="docs/progress.md"
-          DATE=$(date -u +"%Y-%m-%d")
-          TIME=$(date -u +"%H:%M:%S UTC")
-          echo "- **$DATE $TIME** — system evolved" >> $DOC_FILE
+          if [ ! -f "$NODE_FILE" ]; then
+            printf '%s\n' 'const express = require("express");' 'const app = express();' 'app.get("/", (_, res) => res.send("KudiTrace Node.js API running"));' 'app.listen(3000, () => console.log("Server started on port 3000"));' > "$NODE_FILE"
+          fi
 
-          # --- Determine commit count ---
+          if [ ! -f "$GO_FILE" ]; then
+            printf '%s\n' 'package main' 'import "fmt"' 'func main() {' '  fmt.Println("KudiTrace Go Microservice active")' '}' > "$GO_FILE"
+          fi
+
+          if [ ! -f "$RUST_FILE" ]; then
+            printf '%s\n' 'fn main() {' '  println!("KudiTrace Rust Performance Monitor initialized");' '}' > "$RUST_FILE"
+          fi
+
+          if [ ! -f "$TS_FILE" ]; then
+            printf '%s\n' 'export const now = (): string => new Date().toISOString();' > "$TS_FILE"
+          fi
+
+          if [ ! -f "$JS_FILE" ]; then
+            printf '%s\n' 'module.exports = {}' > "$JS_FILE"
+          fi
+
+          if [ ! -f "$DOC_FILE" ]; then
+            printf '%s\n' "# KudiTrace progress log" > "$DOC_FILE"
+          fi
+
+          # Add an initial commit if repo is empty (first run)
+          if [ -z "$(git rev-parse --verify HEAD 2>/dev/null || true)" ]; then
+            git add .
+            git commit -m "chore: initial KudiTrace scaffold"
+            git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}"
+            git push -u origin HEAD:$(git rev-parse --abbrev-ref HEAD)
+          fi
+
+          # --- Determine commit count for this run ---
           DAY=$(date -u +"%d")
           if [ $((10#$DAY % 2)) -eq 0 ]; then
             COMMITS=2
@@ -95,7 +85,7 @@ EOF
             COMMITS=$(( (RANDOM % 3) + 3 ))  # 3 to 5 commits
           fi
 
-          # --- Messages ---
+          # messages and languages
           MESSAGES=(
             "Improved AI monitoring logic"
             "Enhanced observability core"
@@ -108,21 +98,59 @@ EOF
             "Logging enhancements"
           )
 
-          # --- Commit loop ---
-          INTERVALS=(60 120 180 240 300)
-          for ((i=1; i<=COMMITS; i++)); do
-            MSG=${MESSAGES[$RANDOM % ${#MESSAGES[@]}]}
-            echo "- Commit $i/$COMMITS: $MSG" >> $DOC_FILE
-            git add .
-            git commit -m "Auto-evolve: $MSG"
+          LANGS=("node" "go" "react" "rust" "typescript" "javascript")
+          LANG_COUNT=${#LANGS[@]}
 
-            if [ $i -lt $COMMITS ]; then
-              SLEEP=${INTERVALS[$RANDOM % ${#INTERVALS[@]}]}
-              echo "Sleeping for $SLEEP minutes..."
-              sleep $((SLEEP * 60))
-            fi
+          # perform multiple small commits (no sleeping)
+          for ((i=1; i<=COMMITS; i++)); do
+            IDX=$((RANDOM % LANG_COUNT))
+            LANG=${LANGS[$IDX]}
+            MSG=${MESSAGES[$((RANDOM % ${#MESSAGES[@]}))]}
+            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+            case "$LANG" in
+              "node")
+                printf '%s\n' "// ${TIMESTAMP} — ${MSG}" >> "$NODE_FILE"
+                FILE_TO_ADD="$NODE_FILE"
+                PREFIX="[node]"
+                ;;
+              "go")
+                printf '%s\n' "// ${TIMESTAMP} — ${MSG}" >> "$GO_FILE"
+                FILE_TO_ADD="$GO_FILE"
+                PREFIX="[go]"
+                ;;
+              "react")
+                printf '%s\n' "// ${TIMESTAMP} — ${MSG}" >> "$FRONT_FILE"
+                FILE_TO_ADD="$FRONT_FILE"
+                PREFIX="[react]"
+                ;;
+              "rust")
+                printf '%s\n' "// ${TIMESTAMP} — ${MSG}" >> "$RUST_FILE"
+                FILE_TO_ADD="$RUST_FILE"
+                PREFIX="[rust]"
+                ;;
+              "typescript")
+                printf '%s\n' "// ${TIMESTAMP} — ${MSG}" >> "$TS_FILE"
+                FILE_TO_ADD="$TS_FILE"
+                PREFIX="[ts]"
+                ;;
+              "javascript")
+                printf '%s\n' "// ${TIMESTAMP} — ${MSG}" >> "$JS_FILE"
+                FILE_TO_ADD="$JS_FILE"
+                PREFIX="[js]"
+                ;;
+              *)
+                printf '%s\n' "- ${TIMESTAMP} — ${MSG}" >> "$DOC_FILE"
+                FILE_TO_ADD="$DOC_FILE"
+                PREFIX="[doc]"
+                ;;
+            esac
+
+            printf '%s\n' "- ${TIMESTAMP} — ${PREFIX} ${MSG}" >> "$DOC_FILE"
+            git add "$FILE_TO_ADD" "$DOC_FILE" || git add .
+            git commit -m "Auto-evolve ${PREFIX}: ${MSG}"
           done
 
-          # --- Push changes ---
+          # push changes
           git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}"
-          git push origin HEAD:$(git rev-parse --abbrev-ref HEAD)
+          git push origin HEAD:$(git rev-parse --abbrev-ref HEAD) || true
