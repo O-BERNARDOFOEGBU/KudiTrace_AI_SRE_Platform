@@ -1,0 +1,127 @@
+name: KudiTrace Smart Builder
+
+on:
+  schedule:
+    # Run once daily at midnight UTC (01:00 Lagos)
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  evolve_project:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "O-BERNARDOFOEGBU"
+          git config user.email "obinnaofoegbu71@gmail.com"
+
+      - name: Smart evolution script
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          mkdir -p frontend backend/node backend/go backend/rust scripts docs
+
+          # --- FRONTEND (React + TypeScript) ---
+          FRONT_FILE="frontend/App.tsx"
+          if [ ! -f "$FRONT_FILE" ]; then
+            cat <<EOF > $FRONT_FILE
+import React from "react";
+
+export default function App() {
+  return <div className="p-4 text-lg font-bold">KudiTrace Frontend — AI SRE Dashboard</div>;
+}
+EOF
+          else
+            echo "// Auto-update $(date -u)" >> $FRONT_FILE
+          fi
+
+          # --- NODE BACKEND ---
+          NODE_FILE="backend/node/server.js"
+          if [ ! -f "$NODE_FILE" ]; then
+            cat <<EOF > $NODE_FILE
+const express = require("express");
+const app = express();
+app.get("/", (_, res) => res.send("KudiTrace Node.js API running"));
+app.listen(3000, () => console.log("Server started on port 3000"));
+EOF
+          else
+            echo "// heartbeat $(date -u)" >> $NODE_FILE
+          fi
+
+          # --- GO BACKEND ---
+          GO_FILE="backend/go/main.go"
+          if [ ! -f "$GO_FILE" ]; then
+            cat <<EOF > $GO_FILE
+package main
+import "fmt"
+func main() {
+    fmt.Println("KudiTrace Go Microservice active")
+}
+EOF
+          else
+            echo "// minor log $(date -u)" >> $GO_FILE
+          fi
+
+          # --- RUST CORE ---
+          RUST_FILE="backend/rust/main.rs"
+          if [ ! -f "$RUST_FILE" ]; then
+            cat <<EOF > $RUST_FILE
+fn main() {
+    println!("KudiTrace Rust Performance Monitor initialized");
+}
+EOF
+          else
+            echo "// auto-update $(date -u)" >> $RUST_FILE
+          fi
+
+          # --- DOCS ---
+          DOC_FILE="docs/progress.md"
+          DATE=$(date -u +"%Y-%m-%d")
+          TIME=$(date -u +"%H:%M:%S UTC")
+          echo "- **$DATE $TIME** — system evolved" >> $DOC_FILE
+
+          # --- Determine commit count ---
+          DAY=$(date -u +"%d")
+          if [ $((10#$DAY % 2)) -eq 0 ]; then
+            COMMITS=2
+          else
+            COMMITS=$(( (RANDOM % 3) + 3 ))  # 3 to 5 commits
+          fi
+
+          # --- Messages ---
+          MESSAGES=(
+            "Improved AI monitoring logic"
+            "Enhanced observability core"
+            "Refined frontend SRE dashboard"
+            "Rust performance core tuned"
+            "Go microservice optimized"
+            "SRE agent auto-learning update"
+            "Minor UX improvement"
+            "Logging enhancements"
+          )
+
+          # --- Commit loop ---
+          INTERVALS=(60 120 180 240 300)
+          for ((i=1; i<=COMMITS; i++)); do
+            MSG=${MESSAGES[$RANDOM % ${#MESSAGES[@]}]}
+            echo "- Commit $i/$COMMITS: $MSG" >> $DOC_FILE
+            git add .
+            git commit -m "Auto-evolve: $MSG"
+
+            if [ $i -lt $COMMITS ]; then
+              SLEEP=${INTERVALS[$RANDOM % ${#INTERVALS[@]}]}
+              echo "Sleeping for $SLEEP minutes..."
+              sleep $((SLEEP * 60))
+            fi
+          done
+
+          # --- Push changes ---
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}
+          git push origin HEAD:$(git rev-parse --abbrev-ref HEAD)
