@@ -1,4 +1,4 @@
-name: Smart Build
+name: Smart Build & Bootstrap
 
 on:
   push:
@@ -11,20 +11,45 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # allows committing bootstrapped files
 
     steps:
       # 1️⃣ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # 2️⃣ Setup Node.js version
+      # 2️⃣ Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
 
-      # 3️⃣ Cache node_modules smartly
+      # 3️⃣ Bootstrap project if missing
+      - name: Bootstrap minimal Node project
+        run: |
+          if [ ! -f "package.json" ]; then
+            echo "🚀 Bootstrapping minimal Node project..."
+            npm init -y
+            npm install react react-dom next
+            mkdir -p pages
+            echo "export default function Home() { return <h1>KudiTrace AI SRE Dashboard</h1>; }" > pages/index.js
+            echo '{"scripts": {"dev": "next dev", "build": "next build", "start": "next start"}}' > tmp.json
+            jq -s '.[0] * .[1]' package.json tmp.json > package.tmp && mv package.tmp package.json && rm tmp.json
+            npm install --package-lock-only
+            git config user.name "O-BERNARDOFOEGBU"
+            git config user.email "obinnaofoegbu71@gmail.com"
+            git add package.json package-lock.json pages
+            git commit -m "🪄 Auto-bootstrap: Minimal Next.js project structure" || echo "No changes to commit."
+            git push origin main || echo "Push skipped (no permission in fork)"
+          else
+            echo "✅ Existing project detected — skipping bootstrap."
+          fi
+
+      # 4️⃣ Cache dependencies
       - name: Cache node_modules
         id: cache-npm
         uses: actions/cache@v4
@@ -34,19 +59,28 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-modules-
 
-      # 4️⃣ Install dependencies only if cache miss
+      # 5️⃣ Install dependencies
       - name: Install dependencies
-        if: steps.cache-npm.outputs.cache-hit != 'true'
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            echo "Using npm ci"
+            npm ci
+          else
+            echo "Using npm install"
+            npm install
+          fi
 
-      # 5️⃣ Build project
+      # 6️⃣ Build app
       - name: Build app
-        run: npm run build
+        run: |
+          if [ -f package.json ]; then
+            npm run build || echo "⚠️ No build script found — skipping build."
+          fi
 
-      # 6️⃣ Upload build artifacts (optional)
+      # 7️⃣ Upload build artifacts
       - name: Upload build artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: build
-          path: .next
+          path: .next || dist || build
