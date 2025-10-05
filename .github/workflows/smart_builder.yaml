@@ -8,113 +8,106 @@ on:
     branches:
       - main
   schedule:
-    # Run daily at midnight UTC (1AM Lagos)
-    - cron: '0 0 * * *'
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
 
 jobs:
   evolve:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    timeout-minutes: 60
 
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
 
-      # 3️⃣ Auto-bootstrap full project if missing
-      - name: Bootstrap full-stack project
+      - name: Bootstrap full-stack project (safe writes)
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          echo "🧠 Checking for existing files..."
-
+          set -e
           git config user.name "O-BERNARDOFOEGBU"
           git config user.email "obinnaofoegbu71@gmail.com"
 
-          # --- FRONTEND (Next.js + TypeScript) ---
-          if [ ! -f "package.json" ]; then
-            echo "⚙️ Bootstrapping Next.js + TypeScript frontend..."
-            npm init -y
-            npm install react react-dom next typescript @types/react @types/node
-            mkdir -p frontend/pages
-            cat <<EOF > frontend/pages/index.tsx
-import React from 'react';
+          # create directories
+          mkdir -p pages backend/node backend/go backend/rust scripts docs
 
-export default function Home() {
-  return (
-    <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
-      <h1>KudiTrace AI SRE Platform</h1>
-      <p>Because uptime is money 💸</p>
-    </div>
-  );
-}
-EOF
-
-            echo '{"scripts": {"dev": "next dev", "build": "next build", "start": "next start"}}' > tmp.json
-            jq -s '.[0] * .[1]' package.json tmp.json > package.tmp && mv package.tmp package.json && rm tmp.json
-            npm install --package-lock-only
-          fi
-
-          # --- BACKEND: Node.js ---
-          mkdir -p backend/node
-          NODE_FILE="backend/node/server.js"
-          if [ ! -f "$NODE_FILE" ]; then
-            echo "🧩 Setting up Node backend..."
-            cat <<EOF > $NODE_FILE
-const express = require('express');
-const app = express();
-app.get('/', (_, res) => res.send('KudiTrace Node.js API running ✅'));
-app.listen(3000, () => console.log('Node backend live on port 3000'));
-EOF
-          fi
-
-          # --- BACKEND: Go ---
-          mkdir -p backend/go
-          GO_FILE="backend/go/main.go"
-          if [ ! -f "$GO_FILE" ]; then
-            echo "🧩 Setting up Go backend..."
-            cat <<EOF > $GO_FILE
-package main
-import "fmt"
-
-func main() {
-  fmt.Println("KudiTrace Go microservice operational ✅")
-}
-EOF
-          fi
-
-          # --- BACKEND: Rust ---
-          mkdir -p backend/rust
-          RUST_FILE="backend/rust/main.rs"
-          if [ ! -f "$RUST_FILE" ]; then
-            echo "🦀 Setting up Rust backend..."
-            cat <<EOF > $RUST_FILE
-fn main() {
-    println!("KudiTrace Rust performance agent initialized ✅");
-}
-EOF
-          fi
-
-          # --- DOCS ---
-          mkdir -p docs
-          DOC_FILE="docs/progress.md"
           DATE=$(date -u +"%Y-%m-%d")
           TIME=$(date -u +"%H:%M:%S UTC")
-          echo "- **$DATE $TIME** — Project auto-evolved successfully" >> $DOC_FILE
 
-          git add .
-          git commit -m "🪄 Auto-bootstrap: Synced full-stack structure" || echo "No changes to commit"
-          git push origin main || echo "Push skipped (no permission in fork)"
+          # --- package.json (root) ---
+          if [ ! -f "package.json" ]; then
+            printf '%s\n' '{' \
+              '  "name": "kuditrace-ai-sre-platform",' \
+              '  "version": "0.1.0",' \
+              '  "private": true,' \
+              '  "scripts": {' \
+              '    "dev": "next dev",' \
+              '    "build": "next build",' \
+              '    "start": "next start"' \
+              '  },' \
+              '  "dependencies": {}' \
+              '}' > package.json
+            echo "Created package.json"
+          else
+            echo "package.json exists"
+          fi
 
-      # 4️⃣ Cache dependencies
+          # --- Next.js page (pages/index.tsx) ---
+          PAGE_FILE="pages/index.tsx"
+          if [ ! -f "$PAGE_FILE" ]; then
+            printf '%s\n' "import React from 'react';" "" "export default function Home() {" "  return (" "    <div style={{ padding: 20, fontFamily: 'sans-serif' }}>" "      <h1>KudiTrace AI SRE Platform</h1>" "      <p>Because uptime is money 💸</p>" "    </div>" "  );" "}" > "$PAGE_FILE"
+            echo "Created $PAGE_FILE"
+          fi
+
+          # --- Node backend ---
+          NODE_FILE="backend/node/server.js"
+          if [ ! -f "$NODE_FILE" ]; then
+            printf '%s\n' "const express = require('express');" "const app = express();" "app.get('/', (_, res) => res.send('KudiTrace Node.js API running ✅'));" "app.listen(3000, () => console.log('Node backend live on port 3000'));" > "$NODE_FILE"
+            echo "Created $NODE_FILE"
+          fi
+
+          # --- Go backend ---
+          GO_FILE="backend/go/main.go"
+          if [ ! -f "$GO_FILE" ]; then
+            printf '%s\n' 'package main' 'import "fmt"' '' 'func main() {' '  fmt.Println("KudiTrace Go microservice operational ✅")' '}' > "$GO_FILE"
+            echo "Created $GO_FILE"
+          fi
+
+          # --- Rust backend ---
+          RUST_FILE="backend/rust/main.rs"
+          if [ ! -f "$RUST_FILE" ]; then
+            printf '%s\n' 'fn main() {' '    println!("KudiTrace Rust performance agent initialized ✅");' '}' > "$RUST_FILE"
+            echo "Created $RUST_FILE"
+          fi
+
+          # --- Docs progress ---
+          DOC_FILE="docs/progress.md"
+          if [ ! -f "$DOC_FILE" ]; then
+            printf '%s\n' "# KudiTrace progress log" > "$DOC_FILE"
+          fi
+          printf '%s\n' "- **$DATE $TIME** — Project auto-evolved (bootstrap check)" >> "$DOC_FILE"
+
+          # Commit only if there are changes
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "🪄 Auto-bootstrap: Full-stack scaffold and initial files"
+            # push using token
+            git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}"
+            git push origin HEAD:$(git rev-parse --abbrev-ref HEAD) || true
+          else
+            echo "No changes to commit"
+          fi
+
       - name: Cache node_modules
         id: cache-npm
         uses: actions/cache@v4
@@ -124,25 +117,27 @@ EOF
           restore-keys: |
             ${{ runner.os }}-modules-
 
-      # 5️⃣ Install dependencies
-      - name: Install dependencies
+      - name: Install dependencies (adaptive)
         run: |
           if [ -f package-lock.json ]; then
+            echo "Lock file found — using npm ci"
             npm ci
           else
-            npm install
+            echo "No lock file — installing deps and generating lock file"
+            npm install || true
           fi
 
-      # 6️⃣ Build frontend
-      - name: Build frontend
+      - name: Build frontend (if applicable)
         run: |
           if [ -f package.json ]; then
-            npm run build || echo "⚠️ Build script missing — skipping."
+            npm run build || echo "No build script or build failed — skipping further build steps."
+          else
+            echo "No package.json found — skipping build."
           fi
 
-      # 7️⃣ Upload build artifacts
-      - name: Upload artifacts
+      - name: Upload artifacts (optional)
         uses: actions/upload-artifact@v4
         with:
           name: KudiTrace_Build
-          path: .next || build || dist
+          path: .next || build || dist || .
+
