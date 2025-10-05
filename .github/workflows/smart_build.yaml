@@ -2,8 +2,7 @@ name: KudiTrace Smart Builder
 
 on:
   schedule:
-    # Run once daily at midnight UTC (01:00 Lagos)
-    - cron: '0 0 * * *'
+    - cron: '0 0 * * *'  # Run once daily at midnight UTC
   workflow_dispatch:
 
 jobs:
@@ -31,7 +30,7 @@ jobs:
           # --- FRONTEND (React + TypeScript) ---
           FRONT_FILE="frontend/App.tsx"
           if [ ! -f "$FRONT_FILE" ]; then
-            cat <<EOF > $FRONT_FILE
+            cat <<'EOF' > $FRONT_FILE
 import React from "react";
 
 export default function App() {
@@ -45,7 +44,7 @@ EOF
           # --- NODE BACKEND ---
           NODE_FILE="backend/node/server.js"
           if [ ! -f "$NODE_FILE" ]; then
-            cat <<EOF > $NODE_FILE
+            cat <<'EOF' > $NODE_FILE
 const express = require("express");
 const app = express();
 app.get("/", (_, res) => res.send("KudiTrace Node.js API running"));
@@ -58,7 +57,7 @@ EOF
           # --- GO BACKEND ---
           GO_FILE="backend/go/main.go"
           if [ ! -f "$GO_FILE" ]; then
-            cat <<EOF > $GO_FILE
+            cat <<'EOF' > $GO_FILE
 package main
 import "fmt"
 func main() {
@@ -72,7 +71,7 @@ EOF
           # --- RUST CORE ---
           RUST_FILE="backend/rust/main.rs"
           if [ ! -f "$RUST_FILE" ]; then
-            cat <<EOF > $RUST_FILE
+            cat <<'EOF' > $RUST_FILE
 fn main() {
     println!("KudiTrace Rust Performance Monitor initialized");
 }
