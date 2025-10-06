@@ -13,6 +13,7 @@ jobs:
     env:
       GH_PAT: ${{ secrets.GH_PAT }}
       GITHUB_REPO: ${{ github.repository }}
+      PROJECT_NAME: "KudiTrace Evolution Cycle"
 
     steps:
       - name: Checkout repository
@@ -23,14 +24,16 @@ jobs:
       - name: Setup GitHub CLI
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y gh
-          echo "$GH_PAT" | gh auth login --with-token
+          sudo apt-get install -y gh jq
+          echo "${GH_PAT}" | gh auth login --with-token
+          gh auth status
 
       - name: Simulate daily project evolution
         run: |
           set -e
           echo "⚙️ Simulating evolution for KudiTrace AI SRE Platform..."
 
+          mkdir -p docs
           DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
           echo "- Evolution cycle on $DATE" >> docs/progress.md
 
@@ -46,20 +49,16 @@ jobs:
         run: |
           echo "📋 Managing milestone issues..."
 
-          # Fetch last open issue (if any)
-          LAST_ISSUE=$(gh issue list --limit 1 --state open --json number --jq '.[0].number')
+          # Fetch latest open issue (if any)
+          LAST_ISSUE=$(gh issue list --state open --limit 1 --json number --jq '.[0].number')
 
           if [ ! -z "$LAST_ISSUE" ]; then
-            echo "💬 Commenting progress on issue #$LAST_ISSUE..."
-            gh issue comment $LAST_ISSUE --body "✅ Progress Update — Latest daily commits integrated. Continuing next milestone cycle."
-
-            echo "🚪 Closing issue #$LAST_ISSUE..."
-            gh issue close $LAST_ISSUE --comment "Milestone completed successfully. Moving to next evolution phase 🚀."
-          else
-            echo "ℹ️ No open milestone issue found — proceeding to create new one."
+            echo "💬 Commenting and closing issue #$LAST_ISSUE..."
+            gh issue comment $LAST_ISSUE --body "✅ Progress Update — Latest daily commits integrated. Milestone completed."
+            gh issue close $LAST_ISSUE --comment "🎯 Milestone completed successfully. Transitioning to next phase."
           fi
 
-          # Define milestone pool
+          # Milestone pool
           ISSUES=(
             "Add alerting system for downtime incidents"
             "Implement API latency monitoring dashboard"
@@ -79,7 +78,8 @@ jobs:
           NEXT_ISSUE="${ISSUES[$RANDOM % ${#ISSUES[@]}]}"
           echo "🎯 Creating new milestone issue: $NEXT_ISSUE"
 
-          gh issue create \
+          # Create new issue and capture its number
+          ISSUE_URL=$(gh issue create \
             --title "$NEXT_ISSUE" \
             --body "### Next Milestone  
             **Task:** $NEXT_ISSUE  
@@ -88,8 +88,39 @@ jobs:
             **Priority:** High  
             **Status:** Planned  
             **Notes:** Automatically tracked in the daily evolution workflow." \
-            --label "enhancement,milestone,next-phase" || echo "⚠️ Issue may already exist."
+            --label "enhancement,milestone,next-phase" \
+            --assignee "bernardofoegbu" \
+            --json url --jq '.url')
+
+          echo "🆕 Created issue: $ISSUE_URL"
+
+      - name: Add issue to project board
+        run: |
+          echo "📦 Adding issue to project board..."
+
+          # Check if the project exists
+          PROJECT_ID=$(gh project list --owner bernardofoegbu --limit 100 --json title,id --jq ".[] | select(.title==\"${PROJECT_NAME}\") | .id")
+
+          # Create the project if missing
+          if [ -z "$PROJECT_ID" ]; then
+            echo "🪄 Creating new project board: ${PROJECT_NAME}"
+            PROJECT_ID=$(gh project create --owner bernardofoegbu --title "${PROJECT_NAME}" --format json | jq -r '.id')
+            echo "✅ Project created with ID: $PROJECT_ID"
+          fi
+
+          # Get the latest issue number
+          ISSUE_NUMBER=$(gh issue list --limit 1 --json number --jq '.[0].number')
+          ISSUE_ID=$(gh issue view $ISSUE_NUMBER --json id --jq '.id')
+
+          # Add issue to project board
+          if [ ! -z "$PROJECT_ID" ] && [ ! -z "$ISSUE_ID" ]; then
+            echo "🧩 Linking issue #$ISSUE_NUMBER to project '${PROJECT_NAME}'..."
+            gh project item-add $PROJECT_ID --id $ISSUE_ID
+            echo "✅ Issue #$ISSUE_NUMBER added to ${PROJECT_NAME} board."
+          else
+            echo "⚠️ Could not find project or issue ID."
+          fi
 
       - name: Wrap up
         run: |
-          echo "✅ KudiTrace AI Daily Evolution completed at $(date -u)."
+          echo "✅ KudiTrace AI Daily Evolution completed successfully at $(date -u)."
