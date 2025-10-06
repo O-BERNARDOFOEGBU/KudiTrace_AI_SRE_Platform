@@ -2,7 +2,7 @@ name: Daily Evolution & Milestone Creation
 
 on:
   schedule:
-    - cron: '0 9 * * *' # runs every day at 9 AM UTC
+    - cron: '0 8 * * *' # runs every day at 9 AM Lagos time (UTC+1)
   workflow_dispatch:
 
 jobs:
@@ -17,15 +17,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Git
+      - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Generate daily evolution commit
+      - name: Daily evolution commit
         run: |
-          echo "📈 Daily code evolution at $(date)" >> evolution_log.txt
-          echo "Minor tweaks to improve resilience and observability." >> evolution_log.txt
+          echo "🚀 Daily evolution - $(date)" >> evolution_log.txt
+          echo "Incremental improvements to system reliability, alerting, and AI-driven insights." >> evolution_log.txt
           git add evolution_log.txt
           git commit -m "chore: evolve platform $(date +'%Y-%m-%d')" || echo "No changes to commit"
           git push || echo "No changes to push"
@@ -35,20 +35,41 @@ jobs:
           sudo apt-get install -y gh
           echo "${GH_PAT}" | gh auth login --with-token
 
-      - name: Create next milestone and issues
+      - name: Create milestone and new issues
         run: |
-          # Define next milestone
-          MILESTONE_TITLE="Next Evolution $(date +'%Y-%m-%d')"
-          gh api repos/${REPO}/milestones -f title="$MILESTONE_TITLE" -f state="open"
+          # Create a milestone for the new evolution cycle
+          MILESTONE_TITLE="Evolution $(date +'%Y-%m-%d')"
+          gh api repos/${REPO}/milestones -f title="$MILESTONE_TITLE" -f state="open" || echo "Milestone already exists."
 
-          # Define issues for next phase
-          ISSUES=("Add alerting system" "Implement API latency monitor" "Integrate WebSocket live metrics" "Add user-facing uptime dashboard")
-          
-          for ISSUE in "${ISSUES[@]}"; do
+          # Random issue pool
+          ISSUES=(
+            "Add AI-driven anomaly detection"
+            "Implement latency heatmap visualization"
+            "Enhance alert correlation with AI"
+            "Integrate Prometheus metrics ingestion"
+            "Build uptime SLO dashboard"
+            "Add log-based incident detection"
+            "Improve webhook event resilience"
+            "Integrate OpenTelemetry tracing"
+            "Enhance alert noise suppression"
+            "Implement dynamic alert thresholds"
+            "Build SLA report generator"
+            "Add root cause summarization engine"
+            "Integrate Redis cache monitoring"
+            "Implement synthetic uptime testing"
+            "Add user-facing reliability summary"
+          )
+
+          # Shuffle and pick 3–4 random tasks daily
+          SHUFFLED=$(printf "%s\n" "${ISSUES[@]}" | shuf | head -n $((3 + RANDOM % 2)))
+
+          # Create GitHub issues
+          for ISSUE in $SHUFFLED; do
             gh issue create \
               --repo "${REPO}" \
               --title "${ISSUE}" \
-              --body "Part of ${MILESTONE_TITLE}. Automatically created during daily evolution." \
+              --body "This task is part of **${MILESTONE_TITLE}**, focused on improving system reliability and observability." \
               --milestone "${MILESTONE_TITLE}" \
-              --label "enhancement"
+              --label "enhancement" \
+              || echo "Failed to create issue: ${ISSUE}"
           done
