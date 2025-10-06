@@ -1,4 +1,4 @@
-name: KudiTrace AI Daily Evolution
+name: Daily Evolution
 
 on:
   schedule:
