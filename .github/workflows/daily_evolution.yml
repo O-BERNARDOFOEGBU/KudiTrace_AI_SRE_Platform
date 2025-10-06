@@ -1,4 +1,4 @@
-name: Daily Evolution & Milestone Creation
+name: Daily Evolution & Milestone Progress
 
 on:
   schedule:
@@ -8,6 +8,7 @@ on:
 jobs:
   evolve:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     env:
       GH_PAT: ${{ secrets.GH_PAT }}
@@ -19,76 +20,70 @@ jobs:
 
       - name: Configure Git
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "Bernard Ofoegbu"
+          git config --global user.email "bernardofoegbu@users.noreply.github.com"
 
-      - name: Daily evolution commit
-        continue-on-error: true
+      - name: Append daily evolution log
         run: |
-          echo "🚀 Daily evolution - $(date)" >> evolution_log.txt
-          echo "Automated progress entry to simulate continuous improvement." >> evolution_log.txt
-          git add evolution_log.txt
-          git commit -m "chore: evolve platform $(date +'%Y-%m-%d')" || echo "No new changes to commit"
-          git push || echo "No new commits to push"
+          echo "🧩 KudiTrace evolution $(date)" >> evolution_log.md
+          git add evolution_log.md || true
+          git commit -m "🔥 Daily evolution $(date +'%Y-%m-%d')" || echo "⚠️ Nothing to commit"
+          git push || echo "⚠️ Nothing new to push"
 
       - name: Install GitHub CLI
-        continue-on-error: true
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y gh
-          echo "${GH_PAT}" | gh auth login --with-token || echo "⚠️ Failed to authenticate with GitHub CLI"
+          sudo apt-get install -y gh || echo "⚠️ GH CLI install failed"
+          echo "${GH_PAT}" | gh auth login --with-token || echo "⚠️ GitHub CLI authentication failed"
 
-      - name: Verify authentication
+      - name: Verify GitHub CLI Authentication
+        run: |
+          if gh auth status; then
+            echo "✅ Authenticated with GitHub CLI"
+          else
+            echo "⚠️ Auth check failed — continuing anyway"
+          fi
+
+      - name: Create daily milestone and issues
         continue-on-error: true
         run: |
-          gh auth status || echo "⚠️ GitHub CLI not authenticated properly"
-
-      - name: Create milestone and new issues
-        continue-on-error: true
-        run: |
-          if ! command -v gh &> /dev/null; then
-            echo "❌ GitHub CLI not installed properly. Skipping issue creation."
+          if ! command -v gh &>/dev/null; then
+            echo "❌ GH CLI missing. Skipping issue creation."
             exit 0
           fi
 
-          echo "✅ GitHub CLI found. Proceeding with milestone creation."
+          echo "✅ GitHub CLI found, proceeding with milestone creation..."
 
-          # Create a milestone for today
           MILESTONE_TITLE="Evolution $(date +'%Y-%m-%d')"
           gh api repos/${REPO}/milestones -f title="$MILESTONE_TITLE" -f state="open" || echo "⚠️ Could not create milestone (might already exist)."
 
-          # Define SRE roadmap issue pool
           ISSUES=(
-            "Add AI-driven anomaly detection"
-            "Implement latency heatmap visualization"
-            "Integrate Prometheus metrics ingestion"
-            "Enhance alert correlation with AI"
-            "Build uptime SLO dashboard"
-            "Add log-based incident detection"
-            "Improve webhook event resilience"
-            "Integrate OpenTelemetry tracing"
-            "Enhance alert noise suppression"
-            "Implement dynamic alert thresholds"
-            "Build SLA report generator"
-            "Add root cause summarization engine"
-            "Integrate Redis cache monitoring"
-            "Implement synthetic uptime testing"
-            "Add user-facing reliability summary"
+            "Implement API latency tracking dashboard"
+            "Add AI-driven incident detection"
+            "Integrate Slack & email alerting system"
+            "Enhance database observability with Postgres metrics"
+            "Add SLO and SLA visualization dashboard"
+            "Optimize Redis cache performance"
+            "Integrate Prometheus & Grafana metrics collection"
+            "Build downtime root cause summarizer"
+            "Implement OpenTelemetry distributed tracing"
+            "Refactor background job manager with BullMQ"
+            "Add anomaly-based auto-restart mechanism"
+            "Enhance CI/CD for zero-downtime deployments"
           )
 
-          # Pick 2–3 random tasks daily
-          SHUFFLED=$(printf "%s\n" "${ISSUES[@]}" | shuf | head -n $((2 + RANDOM % 2)))
+          COUNT=$((2 + RANDOM % 2))
+          SHUFFLED=$(printf "%s\n" "${ISSUES[@]}" | shuf | head -n $COUNT)
 
-          # Create issues for milestone
           for ISSUE in $SHUFFLED; do
             echo "📝 Creating issue: $ISSUE"
             gh issue create \
               --repo "${REPO}" \
               --title "${ISSUE}" \
-              --body "Part of **${MILESTONE_TITLE}** — improving reliability and observability of the platform." \
+              --body "Part of **${MILESTONE_TITLE}** — improving platform reliability and SRE automation." \
               --milestone "${MILESTONE_TITLE}" \
-              --label "enhancement" \
+              --label "enhancement,next-phase" \
               || echo "⚠️ Failed to create issue: ${ISSUE}"
           done
 
-          echo "🎯 Evolution cycle complete."
+          echo "🎯 Daily evolution and milestone cycle complete."
