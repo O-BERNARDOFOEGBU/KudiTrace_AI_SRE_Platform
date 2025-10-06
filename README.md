@@ -47,7 +47,7 @@ The platform demonstrates **best practices in modern software engineering**, usi
 ---
 
 ## Architecture
-
+```bash
 KudiTrace_AI_SRE_Platform/
 ├── frontend/ # React + TypeScript dashboard
 │ └── src/
@@ -65,7 +65,7 @@ KudiTrace_AI_SRE_Platform/
 │ └── progress.md # Development logs and milestones
 └── tests/
 └── run-tests.js # Unit and integration tests
-
+```
 ---
 
 ## Installation
