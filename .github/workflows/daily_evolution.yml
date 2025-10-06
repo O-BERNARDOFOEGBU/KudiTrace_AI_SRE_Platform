@@ -1,91 +1,95 @@
-name: Daily Evolution
+name: KudiTrace AI Daily Evolution
 
 on:
   schedule:
-    - cron: "0 8 * * *" # Runs daily at 8AM UTC
+    - cron: "0 8 * * *" # Runs daily at 8 AM UTC
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
   evolve:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    env:
+      GH_PAT: ${{ secrets.GH_PAT }}
+      GITHUB_REPO: ${{ github.repository }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup GitHub CLI
-        uses: cli/cli-action@v2
-        with:
-          version: latest
-
-      - name: Simulate daily progress
         run: |
-          echo "🧩 Evolving the KudiTrace platform..."
-          DATE=$(date)
-          echo "- KudiTrace AI SRE Platform evolved on $DATE" >> evolution_log.md
-          
+          sudo apt-get update -y
+          sudo apt-get install -y gh
+          echo "$GH_PAT" | gh auth login --with-token
+
+      - name: Simulate daily project evolution
+        run: |
+          set -e
+          echo "⚙️ Simulating evolution for KudiTrace AI SRE Platform..."
+
+          DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          echo "- Evolution cycle on $DATE" >> docs/progress.md
+
           git config --global user.name "Bernard Ofoegbu"
           git config --global user.email "bernardofoegbu@users.noreply.github.com"
-          
-          git add evolution_log.md
-          git commit -m "🔥 Daily evolution: $DATE" || echo "No new changes to commit"
-          git push || echo "No changes to push"
+
+          git add docs/progress.md
+          git commit -m "🔥 Daily evolution: $DATE" || echo "No changes to commit"
+          git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/${GITHUB_REPO}.git"
+          git push origin HEAD:main || echo "No changes to push"
 
       - name: Manage milestone issues
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "🔧 Managing milestone issues..."
+          echo "📋 Managing milestone issues..."
 
-          # Fetch the most recent open issue (if any)
+          # Fetch last open issue (if any)
           LAST_ISSUE=$(gh issue list --limit 1 --state open --json number --jq '.[0].number')
 
           if [ ! -z "$LAST_ISSUE" ]; then
-            echo "💬 Adding progress comment to issue #$LAST_ISSUE..."
-            gh issue comment $LAST_ISSUE --body "✅ Progress Update: Latest work committed to main. Evolution cycle continues as part of the next milestone."
+            echo "💬 Commenting progress on issue #$LAST_ISSUE..."
+            gh issue comment $LAST_ISSUE --body "✅ Progress Update — Latest daily commits integrated. Continuing next milestone cycle."
 
             echo "🚪 Closing issue #$LAST_ISSUE..."
-            gh issue close $LAST_ISSUE --comment "Milestone completed successfully 🎯 Moving to next phase of KudiTrace evolution."
+            gh issue close $LAST_ISSUE --comment "Milestone completed successfully. Moving to next evolution phase 🚀."
           else
-            echo "ℹ️ No open milestone issues found. Proceeding to create a new one."
+            echo "ℹ️ No open milestone issue found — proceeding to create new one."
           fi
 
-          # Define potential milestone issues
+          # Define milestone pool
           ISSUES=(
             "Add alerting system for downtime incidents"
             "Implement API latency monitoring dashboard"
             "Integrate Redis and BullMQ for background jobs"
-            "Add Prometheus exporter for metrics"
+            "Add Prometheus exporter for service metrics"
             "Implement distributed tracing with OpenTelemetry"
             "Optimize PostgreSQL queries and add indexes"
             "Integrate Slack alert notifications"
             "Build incident response timeline visualization"
-            "Refactor core SRE service modules"
+            "Refactor core SRE orchestration modules"
             "Improve test coverage and CI/CD pipeline"
             "Add anomaly detection with adaptive thresholds"
             "Enable canary release monitoring"
             "Enhance error rate visualization dashboard"
           )
 
-          # Randomly select the next milestone
           NEXT_ISSUE="${ISSUES[$RANDOM % ${#ISSUES[@]}]}"
           echo "🎯 Creating new milestone issue: $NEXT_ISSUE"
 
-          # Create new issue
           gh issue create \
             --title "$NEXT_ISSUE" \
             --body "### Next Milestone  
             **Task:** $NEXT_ISSUE  
-            **Objective:** Implement $NEXT_ISSUE as part of ongoing KudiTrace evolution.  
+            **Objective:** Implement $NEXT_ISSUE as part of ongoing KudiTrace AI evolution.  
             **Owner:** @bernardofoegbu  
             **Priority:** High  
             **Status:** Planned  
-            **Notes:** Auto-tracked via daily evolution workflow." \
-            --label "enhancement,milestone,next-phase" || echo "⚠️ Issue may already exist. Skipping creation."
+            **Notes:** Automatically tracked in the daily evolution workflow." \
+            --label "enhancement,milestone,next-phase" || echo "⚠️ Issue may already exist."
 
-      - name: Log completion
+      - name: Wrap up
         run: |
-          echo "🧠 Daily evolution cycle completed successfully for $(date)."
+          echo "✅ KudiTrace AI Daily Evolution completed at $(date -u)."
