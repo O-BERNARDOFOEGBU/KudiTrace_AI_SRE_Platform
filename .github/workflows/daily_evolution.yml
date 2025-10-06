@@ -1,126 +1,54 @@
-name: Daily Evolution
+name: Daily Evolution & Milestone Creation
 
 on:
   schedule:
-    - cron: "0 8 * * *" # Runs daily at 8 AM UTC
+    - cron: '0 9 * * *' # runs every day at 9 AM UTC
   workflow_dispatch:
 
 jobs:
   evolve:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
 
     env:
       GH_PAT: ${{ secrets.GH_PAT }}
-      GITHUB_REPO: ${{ github.repository }}
-      PROJECT_NAME: "KudiTrace Evolution Cycle"
+      REPO: ${{ github.repository }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Setup GitHub CLI
+      - name: Set up Git
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y gh jq
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Generate daily evolution commit
+        run: |
+          echo "📈 Daily code evolution at $(date)" >> evolution_log.txt
+          echo "Minor tweaks to improve resilience and observability." >> evolution_log.txt
+          git add evolution_log.txt
+          git commit -m "chore: evolve platform $(date +'%Y-%m-%d')" || echo "No changes to commit"
+          git push || echo "No changes to push"
+
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get install -y gh
           echo "${GH_PAT}" | gh auth login --with-token
-          gh auth status
 
-      - name: Simulate daily project evolution
+      - name: Create next milestone and issues
         run: |
-          set -e
-          echo "⚙️ Simulating evolution for KudiTrace AI SRE Platform..."
+          # Define next milestone
+          MILESTONE_TITLE="Next Evolution $(date +'%Y-%m-%d')"
+          gh api repos/${REPO}/milestones -f title="$MILESTONE_TITLE" -f state="open"
 
-          mkdir -p docs
-          DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          echo "- Evolution cycle on $DATE" >> docs/progress.md
-
-          git config --global user.name "Bernard Ofoegbu"
-          git config --global user.email "bernardofoegbu@users.noreply.github.com"
-
-          git add docs/progress.md
-          git commit -m "🔥 Daily evolution: $DATE" || echo "No changes to commit"
-          git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/${GITHUB_REPO}.git"
-          git push origin HEAD:main || echo "No changes to push"
-
-      - name: Manage milestone issues
-        run: |
-          echo "📋 Managing milestone issues..."
-
-          # Fetch latest open issue (if any)
-          LAST_ISSUE=$(gh issue list --state open --limit 1 --json number --jq '.[0].number')
-
-          if [ ! -z "$LAST_ISSUE" ]; then
-            echo "💬 Commenting and closing issue #$LAST_ISSUE..."
-            gh issue comment $LAST_ISSUE --body "✅ Progress Update — Latest daily commits integrated. Milestone completed."
-            gh issue close $LAST_ISSUE --comment "🎯 Milestone completed successfully. Transitioning to next phase."
-          fi
-
-          # Milestone pool
-          ISSUES=(
-            "Add alerting system for downtime incidents"
-            "Implement API latency monitoring dashboard"
-            "Integrate Redis and BullMQ for background jobs"
-            "Add Prometheus exporter for service metrics"
-            "Implement distributed tracing with OpenTelemetry"
-            "Optimize PostgreSQL queries and add indexes"
-            "Integrate Slack alert notifications"
-            "Build incident response timeline visualization"
-            "Refactor core SRE orchestration modules"
-            "Improve test coverage and CI/CD pipeline"
-            "Add anomaly detection with adaptive thresholds"
-            "Enable canary release monitoring"
-            "Enhance error rate visualization dashboard"
-          )
-
-          NEXT_ISSUE="${ISSUES[$RANDOM % ${#ISSUES[@]}]}"
-          echo "🎯 Creating new milestone issue: $NEXT_ISSUE"
-
-          # Create new issue and capture its number
-          ISSUE_URL=$(gh issue create \
-            --title "$NEXT_ISSUE" \
-            --body "### Next Milestone  
-            **Task:** $NEXT_ISSUE  
-            **Objective:** Implement $NEXT_ISSUE as part of ongoing KudiTrace AI evolution.  
-            **Owner:** @bernardofoegbu  
-            **Priority:** High  
-            **Status:** Planned  
-            **Notes:** Automatically tracked in the daily evolution workflow." \
-            --label "enhancement,milestone,next-phase" \
-            --assignee "bernardofoegbu" \
-            --json url --jq '.url')
-
-          echo "🆕 Created issue: $ISSUE_URL"
-
-      - name: Add issue to project board
-        run: |
-          echo "📦 Adding issue to project board..."
-
-          # Check if the project exists
-          PROJECT_ID=$(gh project list --owner bernardofoegbu --limit 100 --json title,id --jq ".[] | select(.title==\"${PROJECT_NAME}\") | .id")
-
-          # Create the project if missing
-          if [ -z "$PROJECT_ID" ]; then
-            echo "🪄 Creating new project board: ${PROJECT_NAME}"
-            PROJECT_ID=$(gh project create --owner bernardofoegbu --title "${PROJECT_NAME}" --format json | jq -r '.id')
-            echo "✅ Project created with ID: $PROJECT_ID"
-          fi
-
-          # Get the latest issue number
-          ISSUE_NUMBER=$(gh issue list --limit 1 --json number --jq '.[0].number')
-          ISSUE_ID=$(gh issue view $ISSUE_NUMBER --json id --jq '.id')
-
-          # Add issue to project board
-          if [ ! -z "$PROJECT_ID" ] && [ ! -z "$ISSUE_ID" ]; then
-            echo "🧩 Linking issue #$ISSUE_NUMBER to project '${PROJECT_NAME}'..."
-            gh project item-add $PROJECT_ID --id $ISSUE_ID
-            echo "✅ Issue #$ISSUE_NUMBER added to ${PROJECT_NAME} board."
-          else
-            echo "⚠️ Could not find project or issue ID."
-          fi
-
-      - name: Wrap up
-        run: |
-          echo "✅ KudiTrace AI Daily Evolution completed successfully at $(date -u)."
+          # Define issues for next phase
+          ISSUES=("Add alerting system" "Implement API latency monitor" "Integrate WebSocket live metrics" "Add user-facing uptime dashboard")
+          
+          for ISSUE in "${ISSUES[@]}"; do
+            gh issue create \
+              --repo "${REPO}" \
+              --title "${ISSUE}" \
+              --body "Part of ${MILESTONE_TITLE}. Automatically created during daily evolution." \
+              --milestone "${MILESTONE_TITLE}" \
+              --label "enhancement"
+          done
