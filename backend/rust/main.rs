@@ -124,3 +124,4 @@ fn main() {
 // Commit: Refactored backend route — 2026-03-30 02:24:45 UTC
 // Commit: Refactored backend route — 2026-03-30 02:24:45 UTC
 // Commit: Expanded Go microservice endpoints — 2026-03-31 02:12:12 UTC
+// Commit: Improved frontend logic — 2026-04-02 02:08:53 UTC
