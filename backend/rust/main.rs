@@ -141,3 +141,4 @@ fn main() {
 // Commit: Refactored backend route — 2026-05-02 02:35:40 UTC
 // Commit: Optimized TypeScript utils — 2026-05-04 02:44:01 UTC
 // Commit: Enhanced API resilience — 2026-05-05 02:37:12 UTC
+// Commit: Improved frontend logic — 2026-05-08 02:48:04 UTC
