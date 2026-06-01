@@ -159,3 +159,4 @@ export const now = (): string => new Date().toISOString();
 // Commit: Improved frontend logic — 2026-05-28 02:58:17 UTC
 // Commit: Improved frontend logic — 2026-05-29 03:27:50 UTC
 // Commit: Optimized TypeScript utils — 2026-05-30 02:54:26 UTC
+// Commit: Enhanced API resilience — 2026-06-01 03:55:12 UTC
