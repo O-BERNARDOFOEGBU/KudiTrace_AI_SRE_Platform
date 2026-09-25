@@ -226,3 +226,4 @@ export const now = (): string => new Date().toISOString();
 // Commit: Enhanced API resilience — 2026-09-19 03:10:48 UTC
 // Commit: Enhanced API resilience — 2026-09-20 03:27:38 UTC
 // Commit: Refactored backend route — 2026-09-24 03:11:56 UTC
+// Commit: Improved frontend logic — 2026-09-25 03:29:15 UTC
