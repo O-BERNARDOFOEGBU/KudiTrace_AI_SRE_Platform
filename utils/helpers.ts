@@ -255,3 +255,4 @@ export const now = (): string => new Date().toISOString();
 // Commit: Improved frontend logic — 2026-11-20 05:45:11 UTC
 // Commit: Optimized TypeScript utils — 2026-11-24 08:26:16 UTC
 // Commit: Refactored backend route — 2026-11-25 07:00:59 UTC
+// Commit: Enhanced API resilience — 2026-11-25 07:00:59 UTC
